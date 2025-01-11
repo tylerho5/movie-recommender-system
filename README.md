@@ -1,7 +1,7 @@
 # Movie Recommender System
 
 ```
- THIS IS A WORK IN PROGRESS
+README IS A WORK IN PROGRESS
  ```
 
 ## Description
