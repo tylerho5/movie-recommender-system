@@ -28,8 +28,8 @@ Output includes:
 
 2. Create a virtual environment and install dependencies:
     ```bash
-    python3 -m venv venv
-    source venv/bin/activate
+    python -m venv .venv
+    source .venv/bin/activate
     pip install -r requirements.txt
     ```
 
@@ -43,11 +43,15 @@ Output includes:
 
 ## Folder Structure
 ```markdown
-├── output/             # Contains recommendation results
-├── raw-datasets/       # Contains raw datasets
+├── output/             # Results from program
+├── raw-datasets/       # Raw datasets in system
+├── report/             # Technical report in .tex format
 ├── scripts/            # Python scripts for recommender system
-├── requirements.txt    # List of dependencies
-└── README.md           # Project documentation
+├── .gitattributes      # Defining attributes
+├── .gitignore          # Ignored environment files
+├── LICENSE             # Licensing for open-source library inspiration
+├── README.md           # Project documentation
+└── requirements.txt    # List of dependencies
 ```
 
 ## Acknowledgments
