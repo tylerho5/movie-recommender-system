@@ -21,11 +21,15 @@ import Scaler as sc
 start_time = time.time()
 print(f"Program started at: {time.ctime(start_time)}")
 
+### 
+# 1. Load data
+###
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-ratings_path = os.path.join(current_dir, '/raw-datasets/ratings.csv')
-movies_path = os.path.join(current_dir, '/raw-datasets/movies.csv')
-tags_path = os.path.join(current_dir, '/raw-datasets/tags.csv')
+ratings_path = os.path.join(current_dir, '../raw-datasets', 'ratings.csv')
+movies_path = os.path.join(current_dir, '../raw-datasets', 'movies.csv')
+tags_path = os.path.join(current_dir, '../raw-datasets', 'tags.csv')
 
 ratings = pd.read_csv(ratings_path)
 movies = pd.read_csv(movies_path)
@@ -73,13 +77,25 @@ trainRatings, testRatings = custom_train_test_split_per_user(ratings)
 # reshape df to have users as rows and movies as cols
 # missing ratings are set to 0
 userItemMatrix = trainRatings.pivot(index = 'userId', columns = 'movieId', values = 'rating').fillna(0)
+print("Creating user-item sparsity matrix...")
+print(f"Number of users: {userItemMatrix.shape[0]}")
+
+###
+# 2. Perform SVD on user-item matrix
+###
 
 # initiate svd model
-svd1 = sv.SVD()
+try: 
+    svd1 = sv.SVD()
+except Exception as e:
+    print(f"Error initializing SVD model: {e}")
+    exit()
+
 # perform svd on df
 user_features = svd1.fit_transform(userItemMatrix)
 # (V^T)^T = V
 item_features = svd1.components.T 
+print("Transforming matrix using SVD...")
 
 # dict to map user id to index in df
 userToIndex = {id: index for index, id in enumerate(userItemMatrix.index)}
@@ -95,7 +111,9 @@ ratingsTagged['tag_weight'] = ratingsTagged['rating']
 # group by user and tag to get average tag weight for each user's tag
 userntagPref = (ratingsTagged.groupby(['userId', 'tag'])['tag_weight'].mean().reset_index())
 
-### handle genres
+### 
+# 3. handle genres
+###
 
 # split main genres string into individual genres
 movies['genres'] = movies['genres'].apply(lambda x: x.split('|') if isinstance(x, str) else [])
@@ -105,6 +123,7 @@ movie_id_to_genres = dict(zip(movies['movieId'], [[genre.lower() for genre in ge
     
 # get set of unique genres
 unique_genres = set(genre for genres in movie_id_to_genres.values() for genre in genres)
+print(f"Number of unique genres: {len(unique_genres)}")
 
 # group by user and genre and calculate average genre weight
 # sets genre weight a tag weight if tag matches genre
@@ -128,8 +147,8 @@ if not user_genre_matrix.columns.empty:
         # df for users with no preferences
         zero_preferences = pd.DataFrame(
             0,
-            index=list(missing_users),
-            columns=user_genre_matrix.columns
+            index = list(missing_users),
+            columns = user_genre_matrix.columns
         )
 
         # add zero preference matrix to the main user to genre matrix
@@ -138,16 +157,23 @@ if not user_genre_matrix.columns.empty:
     # reindex to match the user to genre matrix to the user to item matrix order
     user_genre_matrix = user_genre_matrix.reindex(userItemMatrix.index).fillna(0.0)
 
-### combine tags and genres into embeddings
+### 
+# 4. combine tags and genres into embeddings
+###
 
 # combine tags and genres to be trained in Word2Vec
 corpus = userntagPref['tag'].tolist() + list(unique_genres)
 
 # initialize Word2Vec model
-word2vec = w2v.Word2Vec()
+try: 
+    word2vec = w2v.Word2Vec()
+except Exception as e:
+    print(f"Error initializing Word2Vec model: {e}")
+    exit()
 
 # give tags and genres to model
 word2vec.train([corpus]) 
+print("Training Word2Vec model...")
 
 # get average embedding from user's tags and watched genres
 def getUserEmbedding(user):
@@ -174,8 +200,14 @@ def getUserEmbedding(user):
 user_embedding_matrix = np.array([getUserEmbedding(user) for user in userItemMatrix.index])
 
 # normalizes the user and genre/tag embeddings
-user_scaler = sc.Scaler()
+try:
+    user_scaler = sc.Scaler()
+except Exception as e:
+    print(f"Error initializing Scaler model: {e}")
+    exit()
+
 user_embedding_matrix_scaled = user_scaler.fit_transform(user_embedding_matrix)
+print("Normalizing user embeddings...")
 
 # gets average embedding from movie's tags and genres
 def create_item_embedding(movie_id):
@@ -202,8 +234,14 @@ def create_item_embedding(movie_id):
 item_embedding_matrix = np.array([create_item_embedding(movie_id) for movie_id in userItemMatrix.columns])
 
 # normalize movie embeddings
-item_scaler = sc.Scaler()
+try:
+    item_scaler = sc.Scaler()
+except Exception as e:
+    print(f"Error initializing Scaler model: {e}")
+    exit()
+
 item_embedding_matrix_scaled = item_scaler.fit_transform(item_embedding_matrix)
+print("Normalizing movie embeddings...")
 
 # combine svd user features with normalized user embeddings
 combined_user_features = np.hstack([user_features, user_embedding_matrix_scaled])
@@ -216,6 +254,8 @@ features = []
 ratings = []
 
 # build feature vector for each row in training set 
+
+print("Building feature vectors for regression model...")
 for _, row in trainRatings.iterrows():
     user = row['userId']
     movie_id = row['movieId']
@@ -239,13 +279,21 @@ features = np.array(features)
 ratings = np.array(ratings)
 
 # initialize regression model and fit it to user-movie matrix
-regression_model = rm.RegressionModel(alpha=5)
+try:
+    regression_model = rm.RegressionModel(alpha=5)
+except Exception as e:
+    print(f"Error initializing Regression model: {e}")
+    exit()
+
 regression_model.fit(features, ratings)
+print("Fitting regression model...")
 
 # save coefficients for rating prediction
 coefficients = regression_model.coef
 
-### apply regression model to test set 
+### 
+# 5. apply regression model to test set 
+###
 
 # predict user ratings on test set movies
 def predRatingRegression(user, movie_id):
@@ -306,11 +354,14 @@ def predRatingRegression(user, movie_id):
 # apply predictions to the test set with contributions
 testRatings['predicted_rating'], testRatings['contributions'] = zip(*testRatings.apply(
     lambda row: predRatingRegression(row['userId'], row['movieId']), axis=1))
+print("Predicting ratings in test set...")
 
 # remove blank predictions
 testRatings_clean = testRatings.dropna(subset=['predicted_rating'])
 
-### get contributions for each user 
+###
+# 6. get contributions for each user 
+###
 
 # dict to store user contributions
 user_contributions = {}
@@ -342,7 +393,9 @@ for user in user_contributions:
         user_contributions[user]['similar_user_ratings'] /= count
         user_contributions[user]['tags_and_genres'] /= count
 
-### recommend movies to user 
+### 
+# 7. recommend movies to user 
+###
 
 # generates recommendations from all movies for every user 
 def getRecommendations(user):
@@ -389,9 +442,12 @@ def getRecommendations(user):
 test_users_unique = testRatings['userId'].unique()
 # parallelize the job to reduce runtime
 recommendations = Parallel(n_jobs=-1)(delayed(getRecommendations)(user) for user in test_users_unique)
+print("Generating recommendations...")
 recsDict = dict(zip(test_users_unique, recommendations))
 
-### format results 
+### 
+# 8. format results 
+###
 
 # reformats movie titles
 def reformatTitle(title):
@@ -460,6 +516,8 @@ explanationDict = {}
 for user, recommendations in recsDict.items():
     explanations = getExplanations(user, recommendations)
     explanationDict[user] = explanations
+
+print("Getting explanations results...")
 
 # format movie id recommendations
 def format_recommendations_ids(recommendationDict):
@@ -540,7 +598,9 @@ fmtRecswTitles = format_recommendations_titles(recsDict, movie_id_to_title)
 fmtUserWeighting = format_user_contributions(user_contributions)
 fmtRecExplan = formatRecExplan(explanationDict)
 
-### write results to file
+### 
+# 9. write results to file
+###
 
 # recommendations with movie IDs
 with open('recommendations_ids.txt', 'w') as output:
@@ -562,7 +622,9 @@ with open('recommendations_explanations.txt', 'w') as output:
     output.write(fmtRecExplan)
 print("Recommendation explanations have been written to 'recommendations_explanations.txt'.")
 
-### evaluate results
+### 
+# 10. evaluate results
+###
 
 # calculate mae
 def get_mae(actual, predicted):
@@ -661,7 +723,9 @@ average_NDCG = np.mean(ndcg_list)
 mae1 = get_mae(testRatings_clean['rating'].values, testRatings_clean['predicted_rating'].values)
 rmse1 = get_rmse(testRatings_clean['rating'].values, testRatings_clean['predicted_rating'].values)
 
-### calculate baseline prediction accuracy 
+### 
+# 11. calculate baseline prediction accuracy 
+###
 
 global_mean = trainRatings['rating'].mean()
 
@@ -671,6 +735,7 @@ baseline_mae = get_mae(testRatings_clean['rating'].values, baseline_predictions)
 baseline_rmse = get_rmse(testRatings_clean['rating'].values, baseline_predictions)
 
 # print baseline evaluation metrics
+print("")
 print(f"Baseline Mean Absolute Error (MAE): {baseline_mae:.4f}")
 print(f"Baseline Root Mean Squared Error (RMSE): {baseline_rmse:.4f}\n")
 
@@ -685,4 +750,4 @@ print(f"Average NDCG for top 10: {average_NDCG:.4f}\n")
 end_time = time.time()
 elapsed_time = end_time - start_time
 print(f"Program finished at: {time.ctime(end_time)}")
-print(f"Total execution time: {elapsed_time / 60:.2f} minutes.")
+print(f"Total execution time: {elapsed_time:.2f} seconds.")
