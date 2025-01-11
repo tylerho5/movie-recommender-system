@@ -6,25 +6,25 @@ CONTENTS SUBJECT TO CHANGE
  ```
 
 ## Description
-This project is a movie recommendation system that predicts what users will rate movies they haven't watched yet within the train set and recommends 10 movies based on what the algorithm thinks they will like the most. Explains why recommendations are made and is transparent about latent feature weighting. Gives evaluation metrics for recommendation assessment.
+This project is a movie recommendation system that predicts what users will rate movies they haven't watched yet within the train set and recommends 10 movies based on highest predicted ratings for each user. The recommender system explains why recommendations are made and is transparent about how recommendations are determined by showing latent feature weighting. Additionally, the system provides evaluation metrics for recommendation assessment.
 
 Output includes:
 - top 10 recommendations list with movie ids
 - top 10 recommendations list with movie names
-- the contributions of similar users, genres, and tag weightings
+- ratio of similar user embeddings and tag and genre latent features as weightings
 - explanations for why the top 3 movies were recommended to add transparency to recommendations
 
 ## Features
-- Hybrid filter approach to take advantage of similar users as well as user metadata
+- Hybrid filter approach to take advantage of similar user ratings as well as individual user movie preference
 - Collaborative filtering through SVD
-- Content-based filtering through Word2Vec neural network to apply natural language processing to analyze movie genres and user-submitted review tags
-- Regression 
+- Content-based filtering through Word2Vec neural network to apply natural language processing to analyze and derive semantic relationships from user-submitted review tags and movie genres
+- Regression-based rating prediction
 - Recommendation explainability and transparency
 
 ## Installation
 1. Clone the repository:
     ```bash
-    git clone https://github.com/tylerho5/school-projects/movie-recommender-system.git
+    git clone https://github.com/tylerho5/movie-recommender-system.git
     ```
 
 2. Create a virtual environment and install dependencies:
@@ -35,7 +35,7 @@ Output includes:
     ```
 
 ## Usage
-1. Place your datasets in the `datasets/` folder.
+1. Place your datasets in the `raw-datasets/` folder.
 2. Run the main script:
     ```bash
     python recSys_final.py
