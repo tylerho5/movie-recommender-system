@@ -441,7 +441,7 @@ def getRecommendations(user):
 # get recommendationos for all users in test set 
 test_users_unique = testRatings['userId'].unique()
 # parallelize the job to reduce runtime
-recommendations = Parallel(n_jobs=-1)(delayed(getRecommendations)(user) for user in test_users_unique)
+recommendations = Parallel(n_jobs=-2)(delayed(getRecommendations)(user) for user in test_users_unique)
 print("Generating recommendations...")
 recsDict = dict(zip(test_users_unique, recommendations))
 
