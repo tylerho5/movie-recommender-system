@@ -5,7 +5,6 @@ README IS A WORK IN PROGRESS
 CONTENTS SUBJECT TO CHANGE
  ```
 
-## Description
 This project is a movie recommendation system that predicts what users will rate movies they haven't watched yet within the train set and recommends 10 movies based on highest predicted ratings for each user. The recommender system explains why recommendations are made and is transparent about how recommendations are determined by showing latent feature weighting. Additionally, the system provides evaluation metrics for recommendation assessment.
 
 Output includes:
@@ -54,6 +53,10 @@ Output includes:
 ├── README.md           # Project documentation
 └── requirements.txt    # List of dependencies
 ```
+
+## Future Plans
+- Simple frontend for better display of results
+- cloud hosting and database to speed up inference time and allow for concurrent requests
 
 ## Acknowledgments
 
